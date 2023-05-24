@@ -3,6 +3,7 @@
 # Standard Python Libraries
 from collections import OrderedDict
 from datetime import datetime, timedelta
+import json
 from os import path, stat, utime
 from typing import Dict
 
@@ -10,8 +11,7 @@ from typing import Dict
 from publicsuffixlist.compat import PublicSuffixList
 from publicsuffixlist.update import updatePSL
 
-from . import PublicSuffixListFilename, PublicSuffixListReadOnly, trustymail
-
+from . import  trustymail
 
 def get_psl():
     """Get the Public Suffix List - either new, or cached in the CWD for 24 hours.
@@ -20,20 +20,26 @@ def get_psl():
     -------
     PublicSuffixList: An instance of PublicSuffixList loaded with a cached or updated list
     """
+    # Read environment variables written by the CLI
+    f = open('env.json')
+    env = json.load(f)
+    f.close()
+    filename = env['--psl-filename']
+    readonly = env['--psl-read-only']
     # Download the PSL if necessary
-    if not PublicSuffixListReadOnly:
-        if not path.exists(PublicSuffixListFilename):
-            updatePSL(PublicSuffixListFilename)
-            utime(PublicSuffixListFilename, None)  # Set mtime to now
+    if not readonly:
+        if not path.exists(filename):
+            updatePSL(filename)
+            utime(filename, None)  # Set mtime to now
         else:
             psl_age = datetime.now() - datetime.fromtimestamp(
-                stat(PublicSuffixListFilename).st_mtime
+                stat(filename).st_mtime
             )
             if psl_age > timedelta(hours=24):
-                updatePSL(PublicSuffixListFilename)
-                utime(PublicSuffixListFilename, None)  # Set mtime to now
+                updatePSL(filename)
+                utime(filename, None)  # Set mtime to now
 
-    with open(PublicSuffixListFilename, encoding="utf-8") as psl_file:
+    with open(filename, encoding="utf-8") as psl_file:
         psl = PublicSuffixList(psl_file)
 
     return psl
